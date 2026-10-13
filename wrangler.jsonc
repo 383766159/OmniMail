@@ -23,7 +23,8 @@
   ],
   "r2_buckets": [
     {
-      "binding": "MAIL_BUCKET"
+      "binding": "MAIL_BUCKET",
+      "bucket_name": "omni-mail-emails"
     },
     {
       "binding": "BACKUP_BUCKET",
