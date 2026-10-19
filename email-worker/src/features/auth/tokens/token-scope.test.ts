@@ -80,6 +80,16 @@ describe('device token scopes', () => {
       ['/api/icloud/aliases/alias-1', 'DELETE'],
       ['/api/icloud/inbox', 'GET'],
       ['/api/icloud/inbox/42', 'GET'],
+      ['/api/gmail/accounts', 'GET'],
+      ['/api/gmail/accounts', 'POST'],
+      ['/api/gmail/accounts/account-1', 'PATCH'],
+      ['/api/gmail/accounts/account-1', 'DELETE'],
+      ['/api/gmail/accounts/account-1/app-password', 'PUT'],
+      ['/api/gmail/accounts/account-1/verify', 'POST'],
+      ['/api/gmail/accounts/account-1/sync', 'POST'],
+      ['/api/gmail/messages?accountId=account-1', 'GET'],
+      ['/api/gmail/accounts/account-1/messages/message-1', 'GET'],
+      ['/api/gmail/accounts/account-1/messages/message-1/attachments/part-1', 'GET'],
     ]
     for (const [path, method, body] of allowed) {
       await expect(deviceScopesAllow(
@@ -110,6 +120,23 @@ describe('device token scopes', () => {
         request(path, method),
       ), `${method} ${path}`).resolves.toBe(false)
     }
+  })
+
+  it('requires explicit Gmail scopes for Gmail APIs', async () => {
+    const legacyAndroidScopes = ANDROID_DEVICE_SCOPES
+      .split(' ')
+      .filter((scope) => !scope.startsWith('gmail:'))
+      .join(' ')
+    await expect(deviceScopesAllow(legacyAndroidScopes, request('/api/gmail/accounts')))
+      .resolves.toBe(false)
+    await expect(deviceScopesAllow(legacyAndroidScopes, request('/api/gmail/accounts', 'POST')))
+      .resolves.toBe(false)
+    await expect(deviceScopesAllow(legacyAndroidScopes, request('/api/gmail/messages')))
+      .resolves.toBe(false)
+    await expect(deviceScopesAllow(
+      legacyAndroidScopes,
+      request('/api/gmail/accounts/account-1/sync', 'POST'),
+    )).resolves.toBe(false)
   })
 
   it('allows only the APIs used by OmniMail Float', async () => {

@@ -15,6 +15,11 @@ export const ANDROID_DEVICE_SCOPES = [
   'icloud:aliases:create',
   'icloud:aliases:write',
   'icloud:messages:read',
+  'gmail:accounts:read',
+  'gmail:accounts:write',
+  'gmail:messages:read',
+  'gmail:attachments:read',
+  'gmail:sync',
 ].join(' ')
 export const EXTENSION_DEVICE_SCOPES = [
   'mail-notifications:read',
@@ -171,6 +176,19 @@ export async function deviceScopesAllow(scopes: string, request: Request): Promi
   }
   if (requestMethod === 'GET' && path === '/api/gmail/accounts') {
     return hasScope(scopes, 'gmail:accounts:read')
+  }
+  if (requestMethod === 'POST' && path === '/api/gmail/accounts') {
+    return hasScope(scopes, 'gmail:accounts:write')
+  }
+  if (/^\/api\/gmail\/accounts\/[^/]+$/.test(path)
+    && (requestMethod === 'PATCH' || requestMethod === 'DELETE')) {
+    return hasScope(scopes, 'gmail:accounts:write')
+  }
+  if (requestMethod === 'PUT' && /^\/api\/gmail\/accounts\/[^/]+\/app-password$/.test(path)) {
+    return hasScope(scopes, 'gmail:accounts:write')
+  }
+  if (requestMethod === 'POST' && /^\/api\/gmail\/accounts\/[^/]+\/verify$/.test(path)) {
+    return hasScope(scopes, 'gmail:accounts:write')
   }
   if (requestMethod === 'GET' && (
     path === '/api/gmail/messages'
