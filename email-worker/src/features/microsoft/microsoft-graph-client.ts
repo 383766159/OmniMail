@@ -88,7 +88,9 @@ export class MicrosoftGraphClient {
   ) {}
 
   async open(): Promise<void> {
-    await this.send('/me?$select=mail,userPrincipalName')
+    // 只用 Mail 域端点做连通性校验：这批账号的授权 scope 不含 User.Read，
+    // 访问 /me 会返回 401，会被误判成凭据问题（并显示成 IMAP 相关文案）。
+    await this.send('/me/mailFolders?$top=1')
   }
 
   async close(): Promise<void> {
