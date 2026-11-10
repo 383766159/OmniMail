@@ -95,13 +95,14 @@ async function selectedFolder(
 ): Promise<string> {
   if (requested) {
     const folder = await store.folder(accountId, requested)
-    if (!folder) throw new MicrosoftStoreError(404, 'folder_not_found', 'Microsoft 文件夹不存在。')
-    return folder.path
+    // 切换账号后前端可能残留上一个账号的文件夹 path（Graph 的 path 是文件夹 id，
+    // 与账号一一对应），此时回退到收件箱，而不是抛 404 让整个列表空白。
+    if (folder) return folder.path
   }
   const folders = await store.folders(accountId)
   const inbox = folders.find(({ path }) => path.toUpperCase() === 'INBOX')
     ?? folders.find(({ specialUse }) => specialUse.toLowerCase() === 'inbox')
-  if (!inbox) throw new MicrosoftStoreError(404, 'folder_not_found', 'Microsoft INBOX 不存在。')
+  if (!inbox) throw new MicrosoftStoreError(404, 'folder_not_found', 'Microsoft 文件夹不存在。')
   return inbox.path
 }
 
