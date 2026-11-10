@@ -208,6 +208,8 @@ export function MicrosoftWorkspace({ enabled, remoteImagesEnabled }: {
 
   function chooseAccount(next: string) {
     setAccountId(next); setFolderPath('INBOX'); setSelected(null); setDetail(null); setDetailError('')
+    // 先清空列表：切换账号后若新请求失败，旧账号的邮件不能继续留在屏幕上。
+    setMessages([]); setPage(emptyPage)
   }
 
   function closeDialog() {
