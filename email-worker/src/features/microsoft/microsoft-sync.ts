@@ -2,7 +2,7 @@ import { canonicalMailFlags, changedIndexFields, needsIndexTrim, rememberIndexTr
 import type { Env, MailQueueJob, MicrosoftSyncJob } from '../../app/types'
 import { ImapConnectionError } from '../../platform/imap/imap-errors'
 import { microsoftMailEnabled } from './microsoft-credentials'
-import type { MicrosoftImapClient } from './microsoft-imap'
+import type { MicrosoftMailClient } from './microsoft-client'
 import { openMicrosoftClient } from './microsoft-session'
 import {
   microsoftAccountForSync,
@@ -85,12 +85,13 @@ export function messageStatement(
 ): D1PreparedStatement {
   return env.DB.prepare(
     `INSERT INTO microsoft_imap_messages (
-      id, account_id, folder_path, uid_validity, imap_uid,
+      id, account_id, folder_path, uid_validity, imap_uid, remote_id,
       internet_message_id, sender_name, sender_address, recipients_json,
       cc_json, subject, preview, received_at, sent_at, size_bytes, flags_json,
       is_read, is_starred, has_attachments, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(account_id, folder_path, uid_validity, imap_uid) DO UPDATE SET
+      remote_id = excluded.remote_id,
       internet_message_id = excluded.internet_message_id,
       sender_name = excluded.sender_name,
       sender_address = excluded.sender_address,
@@ -106,13 +107,14 @@ export function messageStatement(
       is_starred = excluded.is_starred,
       has_attachments = excluded.has_attachments,
       updated_at = excluded.updated_at
-    WHERE ${changedIndexFields('microsoft_imap_messages', ['internet_message_id', 'sender_name', 'sender_address', 'recipients_json', 'cc_json', 'subject', 'preview', 'sent_at', 'size_bytes', 'flags_json', 'is_read', 'is_starred', 'has_attachments', ...(message.receivedAt ? ['received_at'] : [])])}`,
+    WHERE ${changedIndexFields('microsoft_imap_messages', ['remote_id', 'internet_message_id', 'sender_name', 'sender_address', 'recipients_json', 'cc_json', 'subject', 'preview', 'sent_at', 'size_bytes', 'flags_json', 'is_read', 'is_starred', 'has_attachments', ...(message.receivedAt ? ['received_at'] : [])])}`,
   ).bind(
     `microsoft_msg_${crypto.randomUUID().replaceAll('-', '')}`,
     accountId,
     folderPath,
     uidValidity,
     message.uid,
+    message.remoteId ?? '',
     message.internetMessageId,
     message.senderName,
     message.senderAddress,
@@ -137,7 +139,7 @@ export async function refreshMicrosoftFolderWithClient(
   accountId: string,
   folderPath: string,
   limit: number,
-  client: MicrosoftImapClient,
+  client: MicrosoftMailClient,
   now = Math.floor(Date.now() / 1000),
 ): Promise<{ uidValidity: number; indexed: number }> {
   const mailbox = await client.examineFolder(folderPath)
@@ -232,7 +234,7 @@ async function recordFailure(
     'credential_key_unavailable', 'basic_auth_rejected',
   ].includes(code)
   const permissionError = [
-    'imap_scope_missing', 'imap_access_rejected', 'xoauth2_unavailable',
+    'imap_scope_missing', 'graph_scope_missing', 'imap_access_rejected', 'xoauth2_unavailable',
     'invalid_scope', 'unauthorized_client', 'consent_required',
   ].includes(code)
   await env.DB.prepare(
@@ -262,7 +264,7 @@ export async function syncMicrosoftAccount(
     return { status: 'skipped', retryable: false }
   }
   let account: MicrosoftAccount | null = null
-  let client: MicrosoftImapClient | undefined
+  let client: MicrosoftMailClient | undefined
   try {
     account = await microsoftAccountForSync(env, accountId)
     if (!account) throw new MicrosoftStoreError(404, 'account_not_found', 'Microsoft 账号不存在。')
@@ -270,6 +272,7 @@ export async function syncMicrosoftAccount(
     const folders = await client.listFolders()
     await saveMicrosoftFolders(env, accountId, folders, now)
     const inbox = folders.find(({ path }) => path.toUpperCase() === 'INBOX')
+      ?? folders.find(({ specialUse }) => specialUse.toLowerCase() === 'inbox')
     if (!inbox) throw new MicrosoftStoreError(502, 'inbox_unavailable', 'Microsoft INBOX 不可用。')
     await refreshMicrosoftFolderWithClient(
       env,
@@ -294,7 +297,7 @@ export async function syncMicrosoftAccount(
       retryable: ![
         'invalid_grant', 'invalid_client', 'credential_decryption_failed',
         'credential_key_unavailable', 'basic_auth_rejected', 'imap_scope_missing',
-        'imap_access_rejected', 'xoauth2_unavailable', 'invalid_scope',
+        'graph_scope_missing', 'imap_access_rejected', 'xoauth2_unavailable', 'invalid_scope',
         'response_too_large', 'account_not_found',
       ].includes(code),
     }

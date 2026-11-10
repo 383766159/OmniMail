@@ -1,3 +1,5 @@
+import type { MicrosoftTransport } from './microsoft-transport'
+
 export type MicrosoftAuthMode = 'oauth2' | 'password'
 export type MicrosoftAccountStatus =
   | 'pending_validation'
@@ -14,6 +16,7 @@ export interface MicrosoftAccountRow {
   provided_email: string
   normalized_email: string
   auth_mode: MicrosoftAuthMode
+  transport: MicrosoftTransport
   client_id: string
   authority: string
   refresh_token_cipher: string
@@ -48,6 +51,7 @@ export interface MicrosoftAccount extends MicrosoftAccountSecrets {
   providedEmail: string
   normalizedEmail: string
   authMode: MicrosoftAuthMode
+  transport: MicrosoftTransport
   clientId: string
   authority: string
   accessTokenExpiresAt: number | null
@@ -70,6 +74,7 @@ export interface PublicMicrosoftAccount {
   name: string
   email: string
   authMode: MicrosoftAuthMode
+  transport: MicrosoftTransport
   clientIdMasked: string
   authority: string
   status: MicrosoftAccountStatus
@@ -103,6 +108,7 @@ export interface MicrosoftFolder {
 
 export interface MicrosoftMessageMetadata {
   uid: number
+  remoteId?: string
   internetMessageId: string
   senderName: string
   senderAddress: string
@@ -149,6 +155,7 @@ export interface MicrosoftImportInput {
   clientId?: unknown
   authority?: unknown
   persistPasswordConfirmed?: unknown
+  transport?: unknown
 }
 
 export interface ValidMicrosoftImport {
@@ -159,4 +166,5 @@ export interface ValidMicrosoftImport {
   refreshToken: string | null
   clientId: string
   authority: string
+  transport: MicrosoftTransport
 }

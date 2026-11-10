@@ -1,7 +1,7 @@
 import type { Env, SessionUser } from '../../app/types'
 import { attachmentDisposition, safeJsonArray } from '../../shared/http/api-helpers'
 import { microsoftMessageLimit } from './microsoft-fields'
-import type { MicrosoftImapClient } from './microsoft-imap'
+import type { MicrosoftMailClient } from './microsoft-client'
 import {
   microsoftPrivateJson,
   microsoftResponseError,
@@ -20,6 +20,7 @@ type MicrosoftMessageRow = {
   folder_path: string
   uid_validity: number
   imap_uid: number
+  remote_id: string
   internet_message_id: string
   sender_name: string
   sender_address: string
@@ -97,8 +98,9 @@ async function selectedFolder(
     if (!folder) throw new MicrosoftStoreError(404, 'folder_not_found', 'Microsoft 文件夹不存在。')
     return folder.path
   }
-  const inbox = (await store.folders(accountId))
-    .find(({ path }) => path.toUpperCase() === 'INBOX')
+  const folders = await store.folders(accountId)
+  const inbox = folders.find(({ path }) => path.toUpperCase() === 'INBOX')
+    ?? folders.find(({ specialUse }) => specialUse.toLowerCase() === 'inbox')
   if (!inbox) throw new MicrosoftStoreError(404, 'folder_not_found', 'Microsoft INBOX 不存在。')
   return inbox.path
 }
@@ -167,7 +169,8 @@ export async function listMicrosoftMessages(
       conditions.push('a.id = ?', 'm.folder_path = ?')
       bindings.push(accountId, folderPath)
     } else {
-      conditions.push("upper(m.folder_path) = 'INBOX'")
+      conditions.push("(upper(m.folder_path) = 'INBOX'"
+        + " OR m.folder_path IN (SELECT path FROM microsoft_imap_folders WHERE special_use = 'inbox'))")
     }
     if (query) {
       const term = query.toLowerCase()
@@ -232,7 +235,7 @@ async function remoteMessage(
   markRead = false,
 ): Promise<{
   row: MicrosoftMessageRow
-  parsed: Awaited<ReturnType<MicrosoftImapClient['getMessage']>>
+  parsed: Awaited<ReturnType<MicrosoftMailClient['getMessage']>>
   markedRead: boolean
 }> {
   const row = await ownedMessage(env, user.id, accountId, messageId)
@@ -247,11 +250,13 @@ async function remoteMessage(
         'Microsoft 文件夹 UIDVALIDITY 已变化，请刷新邮件列表。',
       )
     }
-    const parsed = await client.getMessage(row.folder_path, row.imap_uid)
+    const parsed = await client.getMessage(row.folder_path, row.imap_uid, row.remote_id || undefined)
     let markedRead = false
     if (markRead && !row.is_read) {
       try {
-        await client.markSeen(row.folder_path, row.imap_uid, row.uid_validity)
+        await client.markSeen(
+          row.folder_path, row.imap_uid, row.uid_validity, row.remote_id || undefined,
+        )
         markedRead = true
         try {
           await env.DB.prepare(

@@ -50,6 +50,7 @@ export async function microsoftAccessToken(
       authority: account.authority,
       clientId: account.clientId,
       refreshToken: account.refreshToken,
+      transport: account.transport,
       fetcher: options.fetcher,
     })
     const refreshCipher = await encryptMicrosoftCredential(

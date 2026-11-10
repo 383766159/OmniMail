@@ -29,6 +29,7 @@ export function publicMicrosoftAccount(account: MicrosoftAccount): PublicMicroso
     name: account.name,
     email: account.normalizedEmail,
     authMode: account.authMode,
+    transport: account.transport,
     clientIdMasked: maskedClientId(account.clientId),
     authority: account.authority,
     status: account.status,
@@ -47,6 +48,7 @@ function publicRow(row: MicrosoftAccountRow): PublicMicrosoftAccount {
     name: row.name,
     email: row.normalized_email,
     authMode: row.auth_mode,
+    transport: row.transport ?? 'imap',
     clientIdMasked: maskedClientId(row.client_id),
     authority: row.authority,
     status: row.status,
@@ -94,6 +96,7 @@ async function accountFromRow(env: Env, row: MicrosoftAccountRow): Promise<Micro
     providedEmail: row.provided_email,
     normalizedEmail: row.normalized_email,
     authMode: row.auth_mode,
+    transport: row.transport ?? 'imap',
     clientId: row.client_id,
     authority: row.authority,
     refreshToken,
@@ -194,13 +197,14 @@ export class MicrosoftAccountStore {
       await this.env.DB.prepare(
         `INSERT INTO microsoft_imap_accounts (
           id, user_id, name, provided_email, normalized_email, auth_mode,
+          transport,
           client_id, authority, refresh_token_cipher, access_token_cipher,
           access_token_expires_at, password_cipher, combination_password_cipher,
           status, last_synced_at,
           next_sync_at, last_error_code, last_error_at, sync_lease_id,
           sync_lease_until, token_lease_id, token_lease_until,
           last_manual_sync_at, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).bind(
         account.id,
         this.userId,
@@ -208,6 +212,7 @@ export class MicrosoftAccountStore {
         account.providedEmail,
         account.normalizedEmail,
         account.authMode,
+        account.transport,
         account.clientId,
         account.authority,
         refreshCipher,

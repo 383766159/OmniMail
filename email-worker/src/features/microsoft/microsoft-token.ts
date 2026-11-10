@@ -1,5 +1,11 @@
-const IMAP_SCOPE = 'https://outlook.office.com/IMAP.AccessAsUser.All'
-export const MICROSOFT_TOKEN_SCOPE = `${IMAP_SCOPE} offline_access`
+import {
+  microsoftScopeSatisfied,
+  microsoftTokenScope,
+  MICROSOFT_IMAP_SCOPE,
+} from './microsoft-transport'
+import type { MicrosoftTransport } from './microsoft-transport'
+
+export const MICROSOFT_TOKEN_SCOPE = `${MICROSOFT_IMAP_SCOPE} offline_access`
 const NAMED_AUTHORITIES = new Set(['common', 'consumers', 'organizations'])
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -37,11 +43,13 @@ export async function refreshMicrosoftToken({
   authority,
   clientId,
   refreshToken,
+  transport = 'imap',
   fetcher = fetch,
 }: {
   authority: string
   clientId: string
   refreshToken: string
+  transport?: MicrosoftTransport
   fetcher?: typeof fetch
 }): Promise<{
   accessToken: string
@@ -61,7 +69,7 @@ export async function refreshMicrosoftToken({
         client_id: clientId,
         refresh_token: refreshToken,
         grant_type: 'refresh_token',
-        scope: MICROSOFT_TOKEN_SCOPE,
+        scope: microsoftTokenScope(transport),
       }),
     })
   } catch {
@@ -85,8 +93,12 @@ export async function refreshMicrosoftToken({
   if (!accessToken || !Number.isSafeInteger(expiresIn) || expiresIn < 1) {
     throw new MicrosoftTokenError('invalid_token_response', false, 502)
   }
-  if (scope && !scope.split(/\s+/).some((item) => item.toLowerCase() === IMAP_SCOPE.toLowerCase())) {
-    throw new MicrosoftTokenError('imap_scope_missing', false, 403)
+  if (!microsoftScopeSatisfied(scope, transport)) {
+    throw new MicrosoftTokenError(
+      transport === 'graph' ? 'graph_scope_missing' : 'imap_scope_missing',
+      false,
+      403,
+    )
   }
   return { accessToken, refreshToken: rotated, expiresIn, scope }
 }

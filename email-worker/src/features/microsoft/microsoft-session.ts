@@ -1,6 +1,9 @@
 import type { Env } from '../../app/types'
 import { ImapConnectionError } from '../../platform/imap/imap-errors'
-import type { MicrosoftImapClient } from './microsoft-imap'
+import {
+  createMicrosoftClient,
+  type MicrosoftMailClient,
+} from './microsoft-client'
 import { microsoftAccessToken } from './microsoft-token-manager'
 import { MicrosoftStoreError } from './microsoft-store'
 import type { MicrosoftAccount } from './microsoft-types'
@@ -8,15 +11,19 @@ import type { MicrosoftAccount } from './microsoft-types'
 async function client(
   account: MicrosoftAccount,
   credential: string,
-): Promise<MicrosoftImapClient> {
-  const { MicrosoftImapClient } = await import('./microsoft-imap')
-  return new MicrosoftImapClient(account.normalizedEmail, account.authMode, credential)
+): Promise<MicrosoftMailClient> {
+  return createMicrosoftClient(
+    account.transport ?? 'imap',
+    account.normalizedEmail,
+    account.authMode,
+    credential,
+  )
 }
 
 export async function openMicrosoftClient(
   env: Env,
   account: MicrosoftAccount,
-): Promise<MicrosoftImapClient> {
+): Promise<MicrosoftMailClient> {
   if (account.authMode !== 'oauth2') {
     throw new MicrosoftStoreError(
       409, 'password_auth_removed', 'Microsoft 密码 LOGIN 已停用，请断开后使用 OAuth2 重新连接。',

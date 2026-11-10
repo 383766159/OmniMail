@@ -1,4 +1,4 @@
-import type { MicrosoftImportAccount } from '../../../shared/api'
+import type { MicrosoftImportAccount, MicrosoftTransport } from '../../../shared/api'
 
 export type MicrosoftImportMode = 'oauth2' | 'oauth2_combination'
 export type MicrosoftImportPreview = {
@@ -43,7 +43,10 @@ function invalid(line: number, email: string, error: string): ParsedMicrosoftImp
   }
 }
 
-export function parseMicrosoftImportText(value: string): ParsedMicrosoftImport[] {
+export function parseMicrosoftImportText(
+  value: string,
+  transport: MicrosoftTransport = 'imap',
+): ParsedMicrosoftImport[] {
   const rows: ParsedMicrosoftImport[] = []
   const seen = new Set<string>()
   for (const [offset, raw] of value.split(/\r?\n/).entries()) {
@@ -94,6 +97,7 @@ export function parseMicrosoftImportText(value: string): ParsedMicrosoftImport[]
       input: {
         email,
         authMode: 'oauth2',
+        transport,
         refreshToken,
         clientId,
         authority: 'common',

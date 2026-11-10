@@ -259,6 +259,7 @@ export interface YandexMailMessageDetail
 }
 
 export type MicrosoftAuthMode = 'oauth2' | 'password'
+export type MicrosoftTransport = 'imap' | 'graph'
 export type MicrosoftAccountStatus =
   | 'pending_validation'
   | 'active'
@@ -272,6 +273,7 @@ export interface MicrosoftAccount {
   name: string
   email: string
   authMode: MicrosoftAuthMode
+  transport: MicrosoftTransport
   clientIdMasked: string
   authority: string
   status: MicrosoftAccountStatus
@@ -291,6 +293,7 @@ export interface MicrosoftImportAccount {
   refreshToken?: string
   clientId?: string
   authority?: string
+  transport?: MicrosoftTransport
   persistPasswordConfirmed?: boolean
 }
 

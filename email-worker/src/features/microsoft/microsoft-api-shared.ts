@@ -17,6 +17,7 @@ const messages: Record<string, string> = {
   invalid_client: 'Microsoft Client ID 无法用于这份 refresh token。',
   invalid_scope: 'Microsoft 授权不包含 Outlook IMAP 权限。',
   imap_scope_missing: 'Microsoft token 缺少 Outlook IMAP 权限，请重新授权。',
+  graph_scope_missing: 'Microsoft token 缺少 Graph Mail 权限，请重新授权。',
   imap_access_rejected: 'Microsoft 拒绝 IMAP OAuth2 登录；请检查权限或租户是否启用 IMAP。',
   xoauth2_unavailable: 'Microsoft IMAP 未提供 XOAUTH2 认证。',
   basic_auth_rejected: 'Microsoft 拒绝密码 LOGIN；这不是导入格式错误。请改用包含 refresh token 与 Client ID 的 OAuth2 四字段凭据。',

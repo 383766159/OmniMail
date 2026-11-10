@@ -11,6 +11,7 @@ function account(): MicrosoftAccount {
     providedEmail: 'User@Outlook.com',
     normalizedEmail: 'user@outlook.com',
     authMode: 'oauth2',
+    transport: 'imap',
     clientId: '00000000-0000-4000-8000-000000000000',
     authority: 'common',
     refreshToken: 'refresh-secret',

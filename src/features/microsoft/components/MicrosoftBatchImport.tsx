@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { flushSync } from 'react-dom'
-import { api, type MicrosoftImportResult } from '../../../shared/api'
+import { api, type MicrosoftImportResult, type MicrosoftTransport } from '../../../shared/api'
 import { errorMessage } from '../../../shared/api/errorMessage'
 import { t } from '../../../shared/i18n'
 import { useDelayedScrollbarVisibility } from '../../../shared/ui/scroll/useDelayedScrollbarVisibility'
@@ -19,6 +19,7 @@ import {
   type ParsedMicrosoftImport,
 } from '../model/microsoft-import'
 import { MicrosoftImportProgress, type MicrosoftImportProgressValue } from './MicrosoftImportProgress'
+import { MicrosoftTransportSelector } from './MicrosoftTransportSelector'
 
 gsap.registerPlugin(useGSAP, Flip)
 
@@ -112,6 +113,7 @@ export function MicrosoftBatchImport({ onBusyChange, onChanged, onError, onNotic
 }) {
   const [step, setStep] = useState<BatchStep>('input')
   const [batchText, setBatchText] = useState('')
+  const [transport, setTransport] = useState<MicrosoftTransport>('imap')
   const [consent, setConsent] = useState(false)
   const [items, setItems] = useState<ImportItem[]>([])
   const [progress, setProgress] = useState<MicrosoftImportProgressValue | null>(null)
@@ -119,7 +121,7 @@ export function MicrosoftBatchImport({ onBusyChange, onChanged, onError, onNotic
   const listRef = useRef<HTMLUListElement>(null)
   const stepHeadingRef = useRef<HTMLHeadingElement>(null)
   const mountedRef = useRef(true)
-  const rows = useMemo(() => parseMicrosoftImportText(batchText), [batchText])
+  const rows = useMemo(() => parseMicrosoftImportText(batchText, transport), [batchText, transport])
   const contentScrollbar = useDelayedScrollbarVisibility<HTMLDivElement>({ showOnFocus: false })
   const textareaScrollbar = useDelayedScrollbarVisibility<HTMLTextAreaElement>({ showOnFocus: false })
   const { contextSafe } = useGSAP({ scope: listRef })
@@ -231,6 +233,7 @@ export function MicrosoftBatchImport({ onBusyChange, onChanged, onError, onNotic
     {...contentScrollbar.handlers}>
     <StepIndicator step={step} />
     {step === 'input' ? <div className="icloud-form microsoft-batch-form" data-step="input">
+      <MicrosoftTransportSelector value={transport} onChange={setTransport} />
       <label><span>{t('每行一个账号')}</span><textarea value={batchText} rows={7}
         className={`microsoft-scrollbar${textareaScrollbar.visible ? ' is-scrollbar-visible' : ''}`}
         {...textareaScrollbar.handlers}

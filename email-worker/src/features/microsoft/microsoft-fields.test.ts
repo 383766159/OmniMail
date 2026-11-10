@@ -23,6 +23,7 @@ describe('Microsoft account input validation', () => {
       clientId: '00000000-0000-4000-8000-000000000000',
       authority: 'common',
       name: 'Personal Outlook',
+      transport: 'imap',
     })
   })
 

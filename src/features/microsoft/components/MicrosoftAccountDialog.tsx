@@ -12,6 +12,7 @@ import { t } from '../../../shared/i18n'
 import { DangerConfirmDialog } from '../../../shared/ui/dialogs/DangerConfirmDialog'
 import { useDelayedScrollbarVisibility } from '../../../shared/ui/scroll/useDelayedScrollbarVisibility'
 import { MicrosoftBatchImport } from './MicrosoftBatchImport'
+import { MicrosoftTransportSelector } from './MicrosoftTransportSelector'
 
 gsap.registerPlugin(useGSAP)
 
@@ -40,6 +41,7 @@ export function MicrosoftAccountDialog({ accounts, startAdding = false, onClose,
 }) {
   const [view, setView] = useState<View>(accounts.length && !startAdding ? 'accounts' : 'connect')
   const [entryMode, setEntryMode] = useState<EntryMode>('fields')
+  const [transport, setTransport] = useState<'imap' | 'graph'>('imap')
   const [target, setTarget] = useState<MicrosoftAccount | null>(null)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -182,7 +184,7 @@ export function MicrosoftAccountDialog({ accounts, startAdding = false, onClose,
       return
     }
     const input: MicrosoftImportAccount = {
-      name, email, authMode: 'oauth2', refreshToken, clientId, authority,
+      name, email, authMode: 'oauth2', transport, refreshToken, clientId, authority,
       password: password || undefined,
       persistPasswordConfirmed: password ? true : undefined,
     }
@@ -341,8 +343,8 @@ export function MicrosoftAccountDialog({ accounts, startAdding = false, onClose,
         </div>
         {entryMode === 'fields' ? <form className="icloud-form gmail-connect-form"
           onSubmit={(event) => void connect(event)}>
-          <p className="microsoft-oauth-note"><ShieldCheck size={15} />
-            {t('仅支持 OAuth2；不再接受仅邮箱密码登录。')}</p>
+          <p className="microsoft-oauth-note"><ShieldCheck size={15} />{t('仅支持 OAuth2；不再接受仅邮箱密码登录。')}</p>
+          <MicrosoftTransportSelector value={transport} onChange={setTransport} />
           <label><span>{t('账号名称')}</span><input value={name} maxLength={60} required
             autoComplete="off" onChange={(event) => setName(event.target.value)} /></label>
           <label><span>{t('邮箱地址')}</span><input type="email" value={email} maxLength={254}
@@ -405,16 +407,18 @@ export function MicrosoftAccountDialog({ accounts, startAdding = false, onClose,
               onChange={() => toggleAccountSelection(account.id)} aria-label={t('选择 Microsoft 账号：{email}', { email: account.email })} />
             <span className="gmail-account-card__icon">M</span>
             <span className="gmail-account-card__content"><strong>{account.name}</strong><small>{account.email}</small>
-              <small>{account.authMode === 'oauth2'
-                ? `OAuth2 · ${account.clientIdMasked}` : t('密码模式已停用')}</small></span>
+              <small>{account.authMode === 'oauth2' ? `OAuth2 · ${account.clientIdMasked}`
+                : t('密码模式已停用')}{account.transport === 'graph'
+                  && <i className="microsoft-transport-badge">Graph</i>}</small></span>
             <span className="gmail-account-card__side"><em className={`is-${account.status}`}>{statusLabel(account.status)}</em>
               <span>{selectedAccountIds.has(account.id) ? t('已选择') : t('点击选择')}</span></span>
           </label> : <button className="gmail-account-card" type="button"
             key={account.id} onClick={() => openAccount(account)}>
             <span className="gmail-account-card__icon">M</span>
             <span className="gmail-account-card__content"><strong>{account.name}</strong><small>{account.email}</small>
-              <small>{account.authMode === 'oauth2'
-                ? `OAuth2 · ${account.clientIdMasked}` : t('密码模式已停用')}</small></span>
+              <small>{account.authMode === 'oauth2' ? `OAuth2 · ${account.clientIdMasked}`
+                : t('密码模式已停用')}{account.transport === 'graph'
+                  && <i className="microsoft-transport-badge">Graph</i>}</small></span>
             <span className="gmail-account-card__side"><em className={`is-${account.status}`}>{statusLabel(account.status)}</em>
               <span>{t('管理')}<ChevronRight size={14} /></span></span>
           </button>)}
@@ -432,8 +436,7 @@ export function MicrosoftAccountDialog({ accounts, startAdding = false, onClose,
 
       {view === 'account' && target && <div className="gmail-account-settings">
         <div className="gmail-account-summary"><span className="gmail-account-summary__icon"><KeyRound size={18} /></span>
-          <span><strong>{target.email}</strong><small>{target.authMode === 'oauth2'
-            ? `OAuth2 · ${target.clientIdMasked}` : t('密码模式已停用')}</small></span>
+          <span><strong>{target.email}</strong><small>{target.authMode === 'oauth2' ? `OAuth2 · ${target.clientIdMasked}` : t('密码模式已停用')}</small></span>
           <em className={`is-${target.status}`}>{statusLabel(target.status)}</em></div>
         {target.lastErrorCode && <p className="gmail-account-detail-error"><AlertCircle size={15} />
           {t('最近错误：{code}', { code: target.lastErrorCode })}</p>}
@@ -482,16 +485,13 @@ export function MicrosoftAccountDialog({ accounts, startAdding = false, onClose,
 
 function Consent({ checked, onChange }: { checked: boolean; onChange: (value: boolean) => void }) {
   return <label className="microsoft-password-consent"><input className="selection-checkbox"
-    type="checkbox" checked={checked}
-    onChange={(event) => onChange(event.target.checked)} /><span>
+    type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} /><span>
       {t('我允许服务端加密保存 OAuth2 组合密码；该密码不会用于登录或认证回退。')}</span></label>
 }
 
 function CombinationPasswordFields({ password, consent, onPassword, onConsent }: {
-  password: string
-  consent: boolean
-  onPassword: (value: string) => void
-  onConsent: (value: boolean) => void
+  password: string; consent: boolean
+  onPassword: (value: string) => void; onConsent: (value: boolean) => void
 }) {
   return <><label><span>{t('组合密码（可选）')}</span><input type="password" value={password}
     autoComplete="new-password" onChange={(event) => onPassword(event.target.value)} />

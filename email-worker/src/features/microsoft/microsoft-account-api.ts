@@ -3,7 +3,8 @@ import { writeAudit } from '../../shared/audit/audit'
 import { sha256 } from '../auth/session/auth'
 import { microsoftMailEnabled } from './microsoft-credentials'
 import { microsoftImportAccount, MicrosoftInputError } from './microsoft-fields'
-import type { MicrosoftImapClient } from './microsoft-imap'
+import { createMicrosoftClient, type MicrosoftMailClient } from './microsoft-client'
+import type { MicrosoftTransport } from './microsoft-transport'
 import {
   maskedMicrosoftEmail,
   microsoftJsonBody,
@@ -32,12 +33,12 @@ const MAX_IMPORT_ACCOUNTS = 25
 export const MICROSOFT_VALIDATION_ATTEMPTS = MAX_IMPORT_ACCOUNTS * 2
 
 async function microsoftClient(
+  transport: MicrosoftTransport,
   email: string,
   authMode: ValidMicrosoftImport['authMode'],
   credential: string,
-): Promise<MicrosoftImapClient> {
-  const { MicrosoftImapClient } = await import('./microsoft-imap')
-  return new MicrosoftImapClient(email, authMode, credential)
+): Promise<MicrosoftMailClient> {
+  return createMicrosoftClient(transport, email, authMode, credential)
 }
 
 export async function claimMicrosoftValidationAttempt(
@@ -86,12 +87,14 @@ async function validateImport(input: ValidMicrosoftImport): Promise<{
       authority: input.authority,
       clientId: input.clientId,
       refreshToken,
+      transport: input.transport,
     })
     refreshToken = token.refreshToken
     accessToken = token.accessToken
     accessTokenExpiresAt = Math.floor(Date.now() / 1000) + token.expiresIn
   }
   const client = await microsoftClient(
+    input.transport,
     input.email,
     input.authMode,
     input.authMode === 'oauth2' ? accessToken : input.password || '',
@@ -100,6 +103,7 @@ async function validateImport(input: ValidMicrosoftImport): Promise<{
     await client.open()
     const folders = await client.listFolders()
     const inbox = folders.find(({ path }) => path.toUpperCase() === 'INBOX')
+      ?? folders.find(({ specialUse }) => specialUse.toLowerCase() === 'inbox')
     if (!inbox) throw new MicrosoftStoreError(502, 'inbox_unavailable', 'Microsoft INBOX 不可用。')
     await client.examineFolder(inbox.path)
     return { refreshToken, accessToken, accessTokenExpiresAt, folders }
@@ -175,6 +179,7 @@ export async function importMicrosoftAccounts(
           providedEmail: input.email,
           normalizedEmail: input.email,
           authMode: input.authMode,
+          transport: input.transport,
           clientId: input.clientId,
           authority: input.authority,
           refreshToken: validated.refreshToken,
@@ -251,6 +256,7 @@ export async function updateMicrosoftCredential(
       name: account.name,
       email: account.normalizedEmail,
       authMode,
+      transport: account.transport,
     })
     await claimMicrosoftValidationAttempt(env, user.id, ip)
     const validated = await validateImport(input)
@@ -291,7 +297,7 @@ async function recordRemoteFailure(
   const status = [
     'invalid_grant', 'invalid_client', 'basic_auth_rejected',
   ].includes(code) ? 'credential_error'
-    : ['imap_scope_missing', 'imap_access_rejected', 'xoauth2_unavailable'].includes(code)
+    : ['imap_scope_missing', 'graph_scope_missing', 'imap_access_rejected', 'xoauth2_unavailable'].includes(code)
       ? 'permission_error' : 'error'
   const now = Math.floor(Date.now() / 1000)
   try {
@@ -309,13 +315,14 @@ export async function verifyMicrosoftAccount(
   ip: string,
 ): Promise<Response> {
   let account: MicrosoftAccount | undefined
-  let client: MicrosoftImapClient | undefined
+  let client: MicrosoftMailClient | undefined
   try {
     account = await new MicrosoftAccountStore(env, user.id).get(accountId)
     await claimMicrosoftValidationAttempt(env, user.id, ip)
     client = await openMicrosoftClient(env, account)
     const folders = await client.listFolders()
     const inbox = folders.find(({ path }) => path.toUpperCase() === 'INBOX')
+      ?? folders.find(({ specialUse }) => specialUse.toLowerCase() === 'inbox')
     if (!inbox) throw new MicrosoftStoreError(502, 'inbox_unavailable', 'Microsoft INBOX 不可用。')
     await client.examineFolder(inbox.path)
     const now = Math.floor(Date.now() / 1000)

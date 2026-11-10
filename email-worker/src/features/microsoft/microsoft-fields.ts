@@ -1,4 +1,5 @@
 import { validEmail } from '../../shared/http/api-helpers'
+import { parseMicrosoftTransport } from './microsoft-transport'
 import { validateMicrosoftAuthority } from './microsoft-token'
 import type { MicrosoftImportInput, ValidMicrosoftImport } from './microsoft-types'
 
@@ -50,6 +51,7 @@ export function microsoftImportAccount(
     name,
     email,
     authMode: 'oauth2',
+    transport: parseMicrosoftTransport(value.transport),
     password: value.password === undefined || value.password === '' ? null
       : value.persistPasswordConfirmed === true
         ? secret(value.password, 'Microsoft 组合密码', 1024)

@@ -94,7 +94,7 @@ describe('Microsoft message open behavior', () => {
 
     expect(response.status).toBe(200)
     expect(result.message).toMatchObject({ isRead: true, body: 'Body' })
-    expect(markSeen).toHaveBeenCalledWith('INBOX', 7, 42)
+    expect(markSeen).toHaveBeenCalledWith('INBOX', 7, 42, undefined)
     expect(statements.some(({ sql, bindings }) => (
       sql.includes('UPDATE microsoft_imap_messages SET is_read = 1')
       && bindings.includes('message-1')

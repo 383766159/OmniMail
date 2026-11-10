@@ -8,7 +8,7 @@ function account(): MicrosoftAccount {
     id: 'microsoft_account_1', userId: 'user_1', name: 'Outlook',
     providedEmail: 'user@outlook.com', normalizedEmail: 'user@outlook.com',
     authMode: 'oauth2', clientId: '00000000-0000-4000-8000-000000000000',
-    authority: 'common', refreshToken: 'refresh-token', accessToken: 'cached-token',
+    authority: 'common', transport: 'imap', refreshToken: 'refresh-token', accessToken: 'cached-token',
     accessTokenExpiresAt: 5_000, password: '', status: 'active', lastSyncedAt: null,
     nextSyncAt: 0, lastErrorCode: '', lastErrorAt: null, syncLeaseId: null,
     syncLeaseUntil: null, tokenLeaseId: null, tokenLeaseUntil: null,
