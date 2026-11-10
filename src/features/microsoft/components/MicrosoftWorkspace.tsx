@@ -74,7 +74,10 @@ export function MicrosoftWorkspace({ enabled, remoteImagesEnabled }: {
       const result = await api.microsoftFolders(accountId, refresh)
       setFolders(result.folders)
       setFolderPath((current) => result.folders.some(({ path }) => path === current)
-        ? current : result.folders.find(({ path }) => path.toUpperCase() === 'INBOX')?.path || 'INBOX')
+        ? current
+        : (result.folders.find(({ path }) => path.toUpperCase() === 'INBOX')
+          ?? result.folders.find(({ specialUse }) => specialUse.toLowerCase() === 'inbox'))?.path
+          || 'INBOX')
       if (refresh) setNotice(t('文件夹列表已从 Microsoft 刷新。'))
     } catch (loadError) {
       setError(errorMessage(loadError))

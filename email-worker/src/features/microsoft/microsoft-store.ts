@@ -338,9 +338,16 @@ export class MicrosoftAccountStore {
 
   async folder(accountId: string, path: string): Promise<MicrosoftFolder | null> {
     if (!await this.publicAccount(accountId)) return null
-    const row = await this.env.DB.prepare(
+    // IMAP 的收件箱 path 字面就是 'INBOX'；Graph 传输的 path 是文件夹 id，
+    // 前端仍会按 'INBOX' 请求，因此精确未命中时按 special_use 兜底。
+    let row = await this.env.DB.prepare(
       'SELECT * FROM microsoft_imap_folders WHERE account_id = ? AND path = ? LIMIT 1',
     ).bind(accountId, path).first<MicrosoftFolderRow>()
+    if (!row && path.toUpperCase() === 'INBOX') {
+      row = await this.env.DB.prepare(
+        "SELECT * FROM microsoft_imap_folders WHERE account_id = ? AND special_use = 'inbox' LIMIT 1",
+      ).bind(accountId).first<MicrosoftFolderRow>()
+    }
     return row ? {
       path: row.path,
       displayName: row.display_name,
