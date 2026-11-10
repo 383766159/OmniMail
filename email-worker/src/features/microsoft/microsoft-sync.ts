@@ -18,7 +18,9 @@ import type {
 
 const INITIAL_MESSAGE_LIMIT = 100
 const INDEX_MESSAGE_LIMIT = 500
-const SYNC_INTERVAL_SECONDS = 5 * 60
+// 与 wrangler.jsonc 的 cron `*/5` 对齐：间隔必须短于 cron 周期，否则每逢
+// next_sync_at 落在两个 tick 之间的账号会被整轮跳过（实际退化成 10 分钟一轮）。
+const SYNC_INTERVAL_SECONDS = 2 * 60
 const LEASE_SECONDS = 6 * 60
 const SCHEDULE_BATCH = 50
 
